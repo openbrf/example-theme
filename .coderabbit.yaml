@@ -69,7 +69,7 @@ reviews:
     # The scripts comment why, not what. A coverage threshold would push
     # reviews toward the second kind.
     docstrings:
-      mode: off
+      mode: "off"
 
   path_filters:
     # Generated, vendored or binary: reviewing these produces noise, not
