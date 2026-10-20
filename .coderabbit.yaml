@@ -1,0 +1,234 @@
+# CodeRabbit configuration for the Open BRF example theme.
+#
+# Schema: https://storage.googleapis.com/coderabbit_public_assets/schema.v2.json
+#
+# This is the reference theme: authors copy it to start their own, and the
+# catalog lists it. So the review holds it to the token contract and the
+# release rules, and also asks whether a pattern here would be a bad one to
+# copy. It follows the core repository's .coderabbit.yaml in openbrf/openbrf;
+# where it differs, the comment says why. Most tools default to on, so each
+# one switched off carries its reason.
+
+language: en-US
+
+# Capped at 250 characters by the schema; repo-wide rules live in the "**"
+# path instruction below.
+tone_instructions: >-
+  Be direct and specific: name the line, what breaks, and why. Skip praise and
+  skip restating the diff. Authors copy this theme, so a value that breaks the
+  contract or accessibility outranks style.
+
+reviews:
+  profile: assertive
+
+  # Findings are the value; gatekeeping is CI's job.
+  request_changes_workflow: false
+
+  high_level_summary: true
+  changed_files_summary: true
+  sequence_diagrams: false
+  estimate_code_review_effort: true
+  related_issues: true
+  related_prs: true
+
+  # A public repository is a shop window. No poems, no fortunes.
+  poem: false
+  in_progress_fortune: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    # As in the core repository: a documentation-only pull request is not
+    # reviewed here, because reviews share an hourly allowance with the pull
+    # requests that carry code. The schema matches a keyword anywhere in the
+    # title, case-insensitively, so these catch "docs: ..." and
+    # "docs(scope): ...". A pull request that changes theme.json must not use
+    # the docs type.
+    ignore_title_keywords:
+      - "docs:"
+      - "docs("
+    # Never pause automatic reviews. By default CodeRabbit pauses them after
+    # five reviewed commits and answers every later push with "Review paused".
+    auto_pause_after_reviewed_commits: 0
+    base_branches:
+      - main
+
+  pre_merge_checks:
+    # No commitlint runs here, unlike the core, so a title outside the
+    # convention is a warning rather than an error.
+    title:
+      mode: warning
+      requirements: >-
+        The title should follow Conventional Commits, as in openbrf/openbrf,
+        since a squash merge turns it into the commit message on main. A scope
+        is OPTIONAL: both "type: subject" and "type(scope): subject" are valid.
+        Do not ask for one. It must not contain AI attribution.
+    description:
+      mode: warning
+    # The scripts comment why, not what. A coverage threshold would push
+    # reviews toward the second kind.
+    docstrings:
+      mode: off
+
+  path_filters:
+    # Generated, vendored or binary: reviewing these produces noise, not
+    # findings.
+    - "!package-lock.json"
+    - "!**/node_modules/**"
+    - "!dist/**"
+    - "!fonts/**/*.woff2"
+
+  path_instructions:
+    - path: "**"
+      instructions: >-
+        Repository-wide rules.
+
+        Never add AI attribution to anything you propose: no Co-authored-by
+        trailers naming an AI, no "Generated with" banners, no session links.
+        This applies to committable suggestions and to any commit message you
+        draft.
+
+        Prefer a small number of findings that would actually change the theme
+        over exhaustive commentary. If a change is fine, say so briefly rather
+        than inventing something to raise.
+
+        The rules a theme is held to are in docs/theme-contract.md of
+        openbrf/openbrf, and npm run lint runs the same install lint an
+        instance runs. Do not repeat what the lint already refuses; review
+        what it cannot judge.
+
+    - path: "theme.json"
+      instructions: >-
+        A theme is pure data. Flag anything that would make it executable or
+        make it reach outside the package: a URL in a token value, a font file
+        outside the package, a font loaded from a CDN (it discloses every
+        viewer's IP address to a third party), or a bundled font without a
+        licence file and a declaration in "fonts". A font's licence must allow
+        redistributing it in a package.
+
+        Keys under "modes" must be tokens the contract defines; a key it does
+        not define is not a new token, only a value nothing reads. A theme may
+        change a token's value but never its meaning: flag a status colour that
+        no longer reads as its status, or a value that makes a state readable
+        only by colour.
+
+        Light and dark state the same tokens unless the contract's default is
+        meant for one of them; flag a token set in one mode and left out of
+        the other without a reason.
+
+        The statutory register must stay at WCAG AA in both modes. The lint
+        checks the contract's contrast pairs; flag a new pair this theme
+        creates that the lint does not cover.
+
+        "version" must match package.json, and "contract" and "extends" must
+        name a contract range and a parent the catalog accepts.
+
+    - path: "package.json"
+      instructions: >-
+        The package carries no dependencies an instance installs: it is data,
+        and @openbrf/theme-tools is a devDependency for the lint only. Flag a
+        runtime dependency or an install script. "version" must match
+        theme.json.
+
+    - path: "{scripts,test}/**/*.mjs"
+      instructions: >-
+        pack.mjs builds the tarball the release attests and the catalog states
+        the sha512 of, so it must stay deterministic: it packs with
+        writeThemeArchive from @openbrf/theme-tools, and the same sources give
+        the same bytes. Flag anything that would put the time, the user, an
+        absolute path or a file an instance does not read into the tarball.
+
+        lint.mjs exits non-zero on every error the install lint reports and
+        must not downgrade one to a warning. The tests include a check that
+        the lint can still fail; flag a change that would let it pass
+        vacuously.
+
+    - path: ".github/workflows/**"
+      instructions: >-
+        This repository is public, so a workflow is an attack surface. Flag
+        actions referenced by anything other than a full commit SHA, any use
+        of pull_request_target, a token or secret exposed to a step that does
+        not need it, and a missing least-privilege permissions block. A
+        checkout must keep persist-credentials: false.
+
+        The catalog accepts only an attestation made by release.yml, on a
+        GitHub-hosted runner, for the release's own tag, of a commit on main.
+        Flag a change that would make the workflow run on anything but a v*
+        tag push, attest a tarball other than the one it attaches, publish the
+        release before the tarball is attached, or drop the checks that the
+        tag is on main and matches both manifests' version.
+
+    - path: "**/*.md"
+      instructions: >-
+        Documentation is in English. Domain terms follow GLOSSARY.md in
+        openbrf/openbrf. The README is what an author follows to start a
+        theme and release it, so flag a step that no longer matches the
+        scripts or the workflow.
+
+  tools:
+    # Secrets. Belt and braces alongside GitHub push protection.
+    gitleaks:
+      enabled: true
+    # The release workflow makes the attestation the catalog relies on.
+    actionlint:
+      enabled: true
+    zizmor:
+      enabled: true
+    yamllint:
+      enabled: true
+    # The workflows' run steps are shell.
+    shellcheck:
+      enabled: true
+    # The scripts are plain JavaScript and no linter runs on them in CI;
+    # oxlint's default rules are correctness ones, which cost little noise.
+    oxc:
+      enabled: true
+
+    # --- Deliberately off ---------------------------------------------------
+    # The README keeps hand-written formatting.
+    markdownlint:
+      enabled: false
+    # Prose linters produce more noise than signal here.
+    languagetool:
+      enabled: false
+    vale:
+      enabled: false
+    # Not this repository's linters; enabling them only produces
+    # missing-config errors.
+    eslint:
+      enabled: false
+    biome:
+      enabled: false
+    # Dependency advisories arrive through Dependabot alerts, and the only
+    # dependency is the lint, which never reaches an instance.
+    osvScanner:
+      enabled: false
+
+chat:
+  auto_reply: true
+  # As in the core: no reason yet to answer accounts outside the organisation.
+  allow_non_org_members: false
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "README.md"
+  # The token contract and the install lint live in the core.
+  linked_repositories:
+    - repository: "openbrf/openbrf"
+      instructions: >-
+        The Open BRF core. docs/theme-contract.md defines every token, the
+        manifest format and the rules a theme is held to; packages/tokens
+        holds the token names, their defaults and the contrast matrix, and
+        packages/theme-tools the install lint this repository runs. DESIGN.md
+        governs the interface and GLOSSARY.md fixes the domain terms.
+    - repository: "openbrf/catalog"
+      instructions: >-
+        The curated catalog that lists this theme. Its README states what a
+        listed release must meet: an immutable release, an attestation from
+        release.yml on the release's tag, a commit on main.
+  # Keep what it learns to this repository rather than sharing it wider.
+  learnings:
+    scope: local
